@@ -57,18 +57,38 @@ const addSubmitListener = (formElement) => {
 const displayRamens = () => {
   // Fetch all ramens from the API
   return fetch('http://localhost:3000/ramens')
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(ramens => {
       const ramenMenu = document.getElementById('ramen-menu');
+      if (!ramenMenu) {
+        console.error("Couldn't find ramen-menu element");
+        return [];
+      }
+      
+      // Clear existing content
+      ramenMenu.innerHTML = '';
+      
+      console.log("Ramens loaded:", ramens);
       
       // Create and append image elements for each ramen
       ramens.forEach(ramen => {
+        console.log("Creating image for:", ramen.name, "with src:", ramen.image);
+        
         const img = document.createElement('img');
         img.src = ramen.image;
         img.alt = ramen.name;
+        img.className = 'ramen-img'; // Add a class for styling
         
         // Add click event listener to display ramen details
-        img.addEventListener('click', () => handleClick(ramen));
+        img.addEventListener('click', () => {
+          console.log("Image clicked:", ramen.name);
+          handleClick(ramen);
+        });
         
         ramenMenu.appendChild(img);
       });
@@ -81,14 +101,18 @@ const displayRamens = () => {
       return ramens;
     })
     .catch(error => {
-      console.error('Error fetching ramens:', error);
+      console.error('Error fetching or processing ramens:', error);
       return []; // Return empty array on error to avoid breaking tests
     });
 };
 
 const main = () => {
+  console.log("Application starting...");
+  
   // Invoke displayRamens to show all ramens when page loads
-  displayRamens();
+  displayRamens().then(ramens => {
+    console.log(`Successfully loaded ${ramens.length} ramens`);
+  });
   
   // Invoke addSubmitListener to set up the form submission handler
   addSubmitListener();
@@ -104,5 +128,10 @@ export {
 
 // Only call main if we're not in a test environment
 if (typeof process === 'undefined' || !process.env.VITEST) {
-  main();
+  // Make sure DOM is fully loaded before running main
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', main);
+  } else {
+    main();
+  }
 }
